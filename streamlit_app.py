@@ -3,10 +3,14 @@ import pandas as pd
 import polars as pl
 import fastexcel
 
-st.title("🎈 My new app")
+st.title("🎈 What is this suburb like?")
 st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
+    "Whether you are looking to move to a new suburb, or just curious to " \
+    "know more about a suburb around Melbourne " \
+    "this app provides concrete data that cuts through rumours/speculation " \
+    "and provides data-backed insights on places around Melbourne"
 )
+"Created by: Marcus Fong"
 
 # Read in file
 df = pl.read_excel("data/Population estimates and components by SA2.xlsx", 
@@ -102,3 +106,5 @@ st.dataframe(
     width=800,
     height=400
     )
+
+st.write("Source Data: Austraian Bureau of Statistics (ABS)")
