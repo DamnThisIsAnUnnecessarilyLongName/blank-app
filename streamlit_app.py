@@ -12,6 +12,46 @@ def create_metric(label, value, font_size="28px"):
         <div style='font-size: {font_size}; font-weight: bold;'>{value}</div>
     </div>
     """
+def create_row_crime_metrics(source_df, title, subdivision_value):
+    title_col, select_col, hier_col = st.columns(3)
+
+    with title_col:
+        st.metric(
+            label = "",
+            value = title
+        )
+    if selected_category == 'All':
+        x = source_df.filter(pl.col("Offence Subdivision")==subdivision_value).select(pl.col('Incidents Recorded 2025').sum()).item()
+        x1 = source_df.filter(pl.col("Offence Subdivision")==subdivision_value).select(pl.col('# change').sum()).item()
+
+        # Assault Metric KPI
+        with select_col:
+            st.metric(
+                label = "",
+                value = f"{x:,}",
+                delta = f"{x1:,}"
+            )
+    else:
+        with select_col:
+            x = source_df.filter(pl.col("Suburb/Town Name") == selected_category).filter(pl.col("Offence Subdivision")==subdivision_value).select(pl.col('Incidents Recorded 2025').sum()).item()
+            x1 =source_df.filter(pl.col("Suburb/Town Name") == selected_category).filter(pl.col("Offence Subdivision")==subdivision_value).select(pl.col('# change').sum()).item()
+            suburb = selected_category
+
+            st.metric(
+                label = "",
+                value = f"{x:,}",
+                delta = f"{x1:,}"
+            )
+        with hier_col:
+            sel_council = source_df.filter(pl.col("Suburb/Town Name") == selected_category).filter(pl.col("Offence Subdivision")==subdivision_value).select(pl.col('Local Government Area')).item()
+            x = int(source_df.filter(pl.col("Local Government Area") == sel_council).filter(pl.col("Offence Subdivision")==subdivision_value).select(pl.col('Incidents Recorded 2025').mean()).item())
+            x1 = int(source_df.filter(pl.col("Local Government Area") == sel_council).filter(pl.col("Offence Subdivision")==subdivision_value).select(pl.col('# change').mean()).item())
+            
+            st.metric(
+                label = "",
+                value = f"{x:,}",
+                delta = f"{x1:,}"
+            )
 #########################################################################
 st.title("🎈 What is this suburb like?")
 st.write(
@@ -20,7 +60,10 @@ st.write(
     "this app provides concrete data that cuts through rumours/speculation " \
     "and provides data-backed insights on places around Melbourne"
 )
-"Created by: Marcus Fong"
+st.write("This website is volunteer run and non-for-profit - "
+"if you find it useful, please support by [donating here](%s) 😊" 
+% "https://donate.stripe.com/bJe6oHe5W2aqf2CdMN7bW00")
+st.write("Created by: [Marcus F](%s)" % "https://www.linkedin.com/in/marcus-f-a7505483/")
 
 # Read in file
 df = pl.read_excel("data/Population estimates and components by SA2.xlsx", 
@@ -95,16 +138,17 @@ df_stg = (
 df_stg.columns = ["Council","Suburb","Population","avg_suburb_pop_in_Council",
                 "Area km^2","avg_suburb_area_in_Council",
                 "Population Change"]
-
+# ingest pop data
 df_stg = df_stg.select("Council","Suburb","Population",
                        "Area km^2","Population Change")
+
 # Create dropdown menu
 selected_category = st.selectbox(
     'Select Suburb:',
     options=['All'] + list(df_stg['Suburb'].unique().sort())
 )
 
-# Summary
+# Summary - population
 title_col, select_col, hier_col = st.columns(3)
 
 with title_col:
@@ -112,6 +156,7 @@ with title_col:
         label = "",
         value = "# Residents"
     )
+
 
 # Filter data based on selection
 
@@ -155,6 +200,46 @@ else:
             delta = f"{x1:,}"
         )
 
+## Summary - crimes
+# ingest crimes data
+df_crime = pl.read_csv("data/df_crime_stg.csv")
+
+st.write("Crime Profile")
+
+# Crime Metric KPIs
+create_row_crime_metrics(df_crime, '# Assault', 'A20 Assault and related offences')
+create_row_crime_metrics(df_crime, '# Theft', 'B40 Theft')
+
+## crimes data table
+
+df_crime = (
+        df_crime.select(
+            ["Suburb/Town Name", "Offence Division", 
+            'Offence Subdivision',"Incidents Recorded 2025",
+            "# change","Incidents Recorded 2024","% change"
+            ]
+            )
+        )  
+
+if selected_category == 'All':
+    df_filtered_crime = df_crime
+
+else:
+    df_filtered_crime = (
+        df_crime
+        .filter(
+            pl.col("Suburb/Town Name") == selected_category
+        )
+        .sort("Offence Subdivision")[:,1:7]
+    )
+
+
+st.dataframe(
+    df_filtered_crime,
+    width=1000,
+    height=400
+)
+
 # Display filtered data
 st.dataframe(
     filtered_df,
@@ -162,9 +247,6 @@ st.dataframe(
     height=400
     )
 
-
-
-
 ""
-st.write("Source Data: Austraian Bureau of Statistics (ABS)")
+st.write("Source Data: Australian Bureau of Statistics (ABS)")
 
